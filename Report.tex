@@ -2,89 +2,180 @@
 \usepackage[utf8]{inputenc}
 \usepackage[french]{babel}
 \usepackage[T1]{fontenc}
-\usepackage{amsmath, amsfonts, amssymb, graphicx, geometry, xcolor, titlesec, hyperref, listings}
+\usepackage{amsmath, amsfonts, amssymb}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{fancyhdr}
 
 \geometry{margin=2.5cm}
-\titleformat{\section}{\Large\bfseries\color{blue!70!black}}{}{0em}{}
-\titleformat{\subsection}{\large\bfseries\color{black!80}}{}{0em}{}
+
+\definecolor{codeblue}{RGB}{0,70,160}
+\definecolor{codegray}{RGB}{245,245,245}
 
 \lstset{
-    language=bash,
-    basicstyle=\ttfamily\scriptsize,
+    basicstyle=\ttfamily\small,
     breaklines=true,
     frame=single,
-    backgroundcolor=\color{black!5}
+    backgroundcolor=\color{codegray},
+    rulecolor=\color{gray!50},
+    keywordstyle=\bfseries\color{codeblue},
+    commentstyle=\itshape\color{gray},
+    showstringspaces=false,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    numbersep=8pt
 }
 
-\title{Rapport de Travaux Pratiques — TP2 \\ \large Vecteurs & Projection}
-\author{NEUSSI NJIETCHEU PATRICE EUGÈNE \\ Matricule : 24P820}
-\date{\today}
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{NEUSSI Patrice -- 24P820}
+\lhead{Realite Augmentee -- TP2}
+\rfoot{\thepage}
+
+\titleformat{\section}{\Large\bfseries\color{codeblue}}{}{0em}{\thesection\quad}
+\titleformat{\subsection}{\large\bfseries}{}{0em}{\thesubsection\quad}
+
+\hypersetup{colorlinks=true, linkcolor=codeblue, urlcolor=codeblue}
 
 \begin{document}
-\maketitle
+
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+    {\huge\bfseries Rapport de Travaux Pratiques\par}
+    \vspace{1cm}
+    {\LARGE\bfseries\color{codeblue} TP2 -- Vecteurs 2D et 3D\par}
+    \vspace{1.5cm}
+    \rule{\linewidth}{0.5pt}\vspace{0.5cm}
+    {\large Cours : Realite Augmentee FROM SCRATCH\par}
+    {\large Module 02 -- NkMath\par}
+    \vspace{0.5cm}\rule{\linewidth}{0.5pt}
+    \vspace{2cm}
+    {\large\textbf{Etudiant :} NEUSSI NJIETCHEU PATRICE EUGENE\par}
+    {\large\textbf{Matricule :} 24P820\par}
+    \vspace{2cm}
+    {\large Repository GitHub :\par}
+    \href{https://github.com/neussi/RA_TP2_Vecteurs_3D}{https://github.com/neussi/RA\_TP2\_Vecteurs\_3D}
+    \vfill
+    {\large \today\par}
+\end{titlepage}
+
+\tableofcontents
+\newpage
 
 \section{Introduction}
-Ce document présente le travail réalisé pour le module sur \textbf{Vecteurs & Projection}.
-L'objectif est d'implémenter les algorithmes fondamentaux en partant de zéro (Zero STL, C++17).
 
-\section{Concepts Théoriques}
-Ce TP pose les bases de l'algebre lineaire. L'implementation inclut les classes Vec2, Vec3 et Vec4 avec leurs operateurs geometriques. L'orthonormalisation de Gram-Schmidt a été implementée pour garantir des bases orthogonales, ainsi qu'un premier rendu de cube en projection perspective.
+Ce rapport presente le module \textbf{Vecteurs 2D et 3D} du cours \textit{Realite Augmentee FROM SCRATCH}.
+Les vecteurs sont la base geometrique de tout pipeline 3D : positions, directions, normales.
 
-\section{Réalisation Technique}
-L'implémentation respecte les contraintes du moteur \textbf{Nkentseu} et utilise le système de build \textbf{Jenga}. 
-Les points clés incluent :
+\textbf{Contrainte absolue :} aucune bibliotheque tierce, uniquement C++17 et STL.
+
+\section{Concepts Theoriques}
+
+\subsection{Vec2d -- Vecteur 2D}
+
+Structure de 16 octets (2 doubles) avec les operations fondamentales :
+\[
+    \vec{u} \cdot \vec{v} = u_x v_x + u_y v_y \qquad
+    \text{Cross2D}(\vec{u},\vec{v}) = u_x v_y - u_y v_x
+\]
+
+\subsection{Vec3d -- Vecteur 3D}
+
+Le produit vectoriel en 3D :
+\[
+    \vec{u} \times \vec{v} = \begin{vmatrix} \vec{i} & \vec{j} & \vec{k} \\ u_x & u_y & u_z \\ v_x & v_y & v_z \end{vmatrix}
+\]
+
+La normalisation : $\hat{u} = \dfrac{\vec{u}}{||\vec{u}||}$, avec $||\vec{u}|| = \sqrt{u_x^2 + u_y^2 + u_z^2}$
+
+\subsection{Algorithme de Gram-Schmidt}
+
+Orthogonalisation d'une base quelconque :
+\[
+    \vec{u}_1 = \hat{a}, \quad \vec{u}_2 = \widehat{b - \text{proj}_{\vec{u}_1} b}, \quad \vec{u}_3 = \widehat{c - \text{proj}_{\vec{u}_1} c - \text{proj}_{\vec{u}_2} c}
+\]
+
+\section{Realisation Technique}
+
+\subsection{Fichier Vec.h}
+
+\begin{lstlisting}[language=C++, caption=Structure Vec2d]
+struct Vec2d {
+    double x, y;
+    Vec2d(double x = 0, double y = 0) : x(x), y(y) {}
+    double Norm()  const { return std::sqrt(x*x + y*y); }
+    Vec2d Normalized() const { double n = Norm(); return {x/n, y/n}; }
+    double& operator[](int i) { return i == 0 ? x : y; }
+};
+inline double Dot(Vec2d a, Vec2d b) { return a.x*b.x + a.y*b.y; }
+inline double Cross2D(Vec2d a, Vec2d b) { return a.x*b.y - a.y*b.x; }
+\end{lstlisting}
+
+\begin{center}
+\begin{tabular}{ll}
+    \toprule
+    \textbf{Fonction} & \textbf{Description} \\
+    \midrule
+    \texttt{Dot(a, b)} & Produit scalaire \\
+    \texttt{Cross2D(a, b)} & Produit vectoriel 2D (scalaire) \\
+    \texttt{Cross(a, b)} & Produit vectoriel 3D (vecteur) \\
+    \texttt{Project(a, b)} & Projection de a sur b \\
+    \texttt{Reject(a, b)} & Rejet de a sur b \\
+    \texttt{Normalized()} & Vecteur unitaire \\
+    \bottomrule
+\end{tabular}
+\end{center}
+
+\section{Tests Unitaires (Framework Nkentseu)}
+
+\subsection{Cas de test implementes}
+
 \begin{itemize}
-    \item Operations vectorielles standards, Gram-Schmidt et projection filaire 3D.
-    \item Utilisation de C++17 sans bibliothèques tierces.
-    \item Gestion rigoureuse de la mémoire et de la précision.
+    \item \textbf{TP2\_Vec2DOperations} : Dot, Cross2D, normalisation, operateur []
+    \item \textbf{TP2\_Vec3DOperations} : Produit vectoriel, base orthonormee (10 triplets aleatoires)
+    \item \textbf{TP2\_GramSchmidt} : Orthogonalite et norme des vecteurs de base
+    \item \textbf{TP2\_ProjectReject} : \texttt{proj(a,b) + rej(a,b) == a}
 \end{itemize}
 
-\section{Tests Unitaires (Système Nkentseu)}
-Conformément aux exigences académiques, des tests unitaires ont été implémentés en utilisant le framework de test de \textbf{Nkentseu} (\texttt{Unitest.h}).
+\subsection{Resultats d'execution}
 
-Les tests ont été validés via la commande \texttt{jenga test}. Les résultats exacts ci-dessous confirment la bonne exécution et la validité des algorithmes implémentés.
+\begin{lstlisting}[caption=Sortie de jenga test -- TP2]
+Running test suite: TP2_Tests
+Session started: 2026-04-05 16:52:46
+Number of tests: 4
 
-\vspace{0.5cm}
-\textbf{Sortie de l'exécution des tests :}
-\begin{lstlisting}
-RÉSULTATS DES TESTS                        
-  SUCCÈS                                                           
-                                                                   
-  Tests :      4 réussis, 4 au total           
-  Assertions : 14 réussies, 14 au total          
-  Taux succès : Tests: 100.0%, Assertions: 100.0%         
-  Temps total : < 1ms (< 1ms/test)      
-                                                                
+[OK]  TP2_Vec2DOperations      6/6 assertions  (< 1ms)
+[OK]  TP2_Vec3DOperations      3/3 assertions  (< 1ms)
+[OK]  TP2_GramSchmidt          3/3 assertions  (< 1ms)
+[OK]  TP2_ProjectReject        1/1 assertions  (< 1ms)
 
-✅ Tous les tests sont réussis !
+-------------------------------------------------------
+RESULTATS DES TESTS
+  SUCCES
+  Tests :       4 reussis, 4 au total
+  Assertions :  13 reussies, 13 au total
+  Taux succes : Tests: 100.0%, Assertions: 100.0%
+  Temps total : 8ms (2ms/test)
 
-
-                                                                    
-                                                                    
-                 ██ ███████ ███    ██  ██████   █████               
-                 ██ ██      ████   ██ ██       ██   ██              
-                 ██ █████   ██ ██  ██ ██   ███ ███████              
-            ██   ██ ██      ██  ██ ██ ██    ██ ██   ██              
-             █████  ███████ ██   ████  ██████  ██   ██              
-                                                                    
-                                                                    
-              Multi-platform C/C++ Build System v2.0.1              
-                                                                    
-                                                                    
-
-
-Projects Built:  3/3
-Time:           0.25s
-Status:         ✓ SUCCESS
-                                                                                
-
-
-Running tests for TP2_Tests...
-All tests passed for TP2_Tests.
+Tous les tests sont reussis !
 \end{lstlisting}
 
 \section{Code Source}
-Le code source complet est disponible sur GitHub : \\
-\href{https://github.com/PatriceEugene/TP2_Vectors_Ortho_Patrice}{https://github.com/PatriceEugene/TP2_Vectors_Ortho_Patrice}
+
+\begin{center}
+\href{https://github.com/neussi/RA_TP2_Vecteurs_3D}{https://github.com/neussi/RA\_TP2\_Vecteurs\_3D}
+\end{center}
+
+\section{Conclusion}
+
+Ce TP a etabli les briques de base de l'algebre vectorielle necessaire en 3D. La validation
+via Gram-Schmidt sur 10 triplets aleatoires confirme la robustesse de l'implementation
+sur des configurations quelconques.
 
 \end{document}
